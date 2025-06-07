@@ -6,10 +6,10 @@ simple entities like age, conditions and gender from the input text.
 
 ## Setup
 
-Install the required dependency and download the spaCy model:
+Install the required dependencies and download the spaCy model:
 
 ```bash
-pip install spacy
+pip install spacy flask
 python -m spacy download en_core_web_sm
 ```
 
@@ -23,6 +23,25 @@ python main.py
 
 The script prints a simulated FHIR `Patient` search request based on the
 entities it finds in your query.
+
+## Running the web demo
+
+Start the Flask server in one terminal:
+
+```bash
+python server.py
+```
+
+Serve the static files in the `web` folder (for example on port 8000):
+
+```bash
+cd web
+python -m http.server 8000
+```
+
+Open `http://localhost:8000` in your browser. Enter a query in the text box
+and the generated FHIR request along with simulated patient results will be
+displayed in a table and bar chart.
 
 ## Example mappings
 
