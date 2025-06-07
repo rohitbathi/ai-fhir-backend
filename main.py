@@ -1,48 +1,60 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
 import spacy
-import re
 
-app = FastAPI()
 nlp = spacy.load("en_core_web_sm")
 
-class Query(BaseModel):
-    text: str
+CONDITION_KEYWORDS = {
+    "diabetes": {"diabetes", "diabetic"},
+    "hypertension": {"hypertension", "hypertensive"},
+    "asthma": {"asthma", "asthmatic"},
+}
+
+GENDER_KEYWORDS = {"male", "female"}
+
 
 def parse_query(text: str):
     doc = nlp(text)
-    age = None
-    condition = []
-    for ent in doc.ents:
-        if ent.label_ == "PERSON": continue
-        if re.match(r"\d+", ent.text):
-            age = int(ent.text)
-    for token in doc:
-        if token.lemma_.lower() in {"diabetic", "diabetes"}:
-            condition.append("diabetes")
-    return age, condition
+    age_gt = None
+    gender = None
+    conditions = set()
 
-def to_fhir(age, conditions):
+    for token in doc:
+        if token.like_num:
+            try:
+                value = int(token.text)
+            except ValueError:
+                continue
+            prefix = text[max(0, token.idx - 15) : token.idx].lower()
+            if any(k in prefix for k in ["over", "greater than", "older than"]):
+                age_gt = value
+        lemma = token.lemma_.lower()
+        if lemma in GENDER_KEYWORDS:
+            gender = lemma
+        for cond, keywords in CONDITION_KEYWORDS.items():
+            if lemma in keywords:
+                conditions.add(cond)
+
+    return age_gt, sorted(conditions), gender
+
+
+def build_fhir_request(age_gt, conditions, gender):
     params = []
-    if age:
-        params.append(f"patient.age=gt{age}")
-    if conditions:
-        for c in conditions:
-            params.append(f"condition.code:{c}")
+    if age_gt is not None:
+        params.append(f"age=gt{age_gt}")
+    if gender:
+        params.append(f"gender={gender}")
+    for c in conditions:
+        params.append(f"condition.code={c}")
+    if not params:
+        return "/Patient"
     return "/Patient?" + "&".join(params)
 
-@app.post("/query")
-def query(q: Query):
-    age, conds = parse_query(q.text)
-    fhir_request = to_fhir(age, conds)
-    return {
-        "input": q.text,
-        "fhir_request": fhir_request,
-        "results": [
-            {"id": "123", "name": "Alice", "age":  sixty if False else age, "condition": conds}
-        ]
-    }
+
+def main():
+    text = input("Enter query: ")
+    age_gt, conditions, gender = parse_query(text)
+    request = build_fhir_request(age_gt, conditions, gender)
+    print("FHIR request:", request)
+
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("nlp_service:app", host="0.0.0.0", port=8000, reload=True)
+    main()
