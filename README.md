@@ -1,0 +1,54 @@
+# AI FHIR Backend
+
+This project contains a small example script that converts natural language
+queries into simulated FHIR API requests. It uses `spaCy` to extract
+simple entities like age, conditions and gender from the input text.
+
+## Setup
+
+Install the required dependencies and download the spaCy model:
+
+```bash
+pip install spacy flask
+python -m spacy download en_core_web_sm
+```
+
+## Running the script
+
+Run the program and enter a query when prompted:
+
+```bash
+python main.py
+```
+
+The script prints a simulated FHIR `Patient` search request based on the
+entities it finds in your query.
+
+## Running the web demo
+
+Start the Flask server in one terminal:
+
+```bash
+python server.py
+```
+
+Serve the static files in the `web` folder (for example on port 8000):
+
+```bash
+cd web
+python -m http.server 8000
+```
+
+Open `http://localhost:8000` in your browser. Enter a query in the text box
+and the generated FHIR request along with simulated patient results will be
+displayed in a table and bar chart.
+
+## Example mappings
+
+| Input text                                   | FHIR request                                   |
+|----------------------------------------------|------------------------------------------------|
+| `Show me all diabetic patients over 50`      | `/Patient?age=gt50&condition.code=diabetes`    |
+| `List hypertensive male patients over 40`    | `/Patient?age=gt40&gender=male&condition.code=hypertension` |
+| `Asthmatic female patients over 30`          | `/Patient?age=gt30&gender=female&condition.code=asthma` |
+| `Find male patients over 65 with diabetes`   | `/Patient?age=gt65&gender=male&condition.code=diabetes` |
+| `Patients over 20 with asthma or hypertension` | `/Patient?age=gt20&condition.code=asthma&condition.code=hypertension` |
